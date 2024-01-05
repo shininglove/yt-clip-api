@@ -41,13 +41,18 @@ async fn clip_request(req: Json<ClipRequest>) -> impl Responder {
         duration,
         start_time,
     };
-    let sound_download = download(&sound).unwrap();
-    let download_location = sound_download.output_dir().to_string_lossy();
-    println!("Your download: {}", download_location);
-    sound_splice(sound, &download_location).unwrap();
-
-    let message = format!("Name: {} has successfully been downloaded", req.name);
-    HttpResponse::Ok().body(message)
+    let sound_result = download(&sound);
+    if let Some(sound_download) = sound_result.as_ref().ok() {
+        let download_location = sound_download.output_dir().to_string_lossy();
+        println!("Your download: {}", download_location);
+        sound_splice(sound, &download_location).unwrap();
+        let message = format!("Name: {} has successfully been downloaded", req.name);
+        return HttpResponse::Ok().body(message);
+    } else {
+        let dl_message = sound_result.unwrap_err();
+        let message: String = dl_message.to_string().split(":").skip(1).collect();
+        return HttpResponse::Ok().body(message);
+    }
 }
 
 #[actix_web::main]
